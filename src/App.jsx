@@ -2,10 +2,9 @@ import { useState } from "react";
 import axios from "axios";
 import "./assets/style.css";
 
-const API_BASE = "https://ec-course-api.hexschool.io/v2";
 
-// 請自行替換 API_PATH
-const API_PATH = "";
+const API_BASE = import.meta.env.VITE_BASE_URL;
+const API_PATH = import.meta.env.VITE_API_PATH;
 
 function App() {
   const [formData, setFormData] = useState({
@@ -14,9 +13,42 @@ function App() {
   });
 
   const [isAuth, setisAuth] = useState(false);
-  const [products, setProducts] = useState([]);
   const [tempProduct, setTempProduct] = useState(null);
+  const [products, setProducts] = useState([]);
+  
+  // 取得登入資訊
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+  
+  // 登入，儲存 token
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
+    try {
+      const response = await axios.post(`${API_BASE}/admin/signin`, formData);
+      const { token, expired } = response.data;
+      document.cookie = `hexToken=${token};expires=${new Date(expired)};`;
+
+      axios.defaults.headers.common.Authorization = `${token}`;
+
+      // 驗證是否已登入
+      setisAuth(true);
+      alert(response.data.message);
+
+      getData();
+
+    } catch (error) {
+      alert("登入失敗: " + error.response.data.message);
+    }
+  };
+
+  // 確認是否登入，並取得 token
   async function checkLogin() {
     try {
       const token = document.cookie
@@ -26,8 +58,8 @@ function App() {
       console.log(token);
       axios.defaults.headers.common.Authorization = token;
 
-      const res = await axios.post(`${API_BASE}/api/user/check`);
-      console.log(res);
+      const res = await axios.post(`${API_BASE}/api/user/check`);           
+      alert(res.data.success ? '已登入' : '尚未登入');
     } catch (error) {
       console.error(error);
     }
@@ -41,32 +73,6 @@ function App() {
       setProducts(response.data.products);
     } catch (err) {
       console.error(err.response.data.message);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [id]: value,
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const response = await axios.post(`${API_BASE}/admin/signin`, formData);
-      const { token, expired } = response.data;
-      document.cookie = `hexToken=${token};expires=${new Date(expired)};`;
-
-      axios.defaults.headers.common.Authorization = `${token}`;
-
-      getData();
-
-      setisAuth(true);
-    } catch (error) {
-      alert("登入失敗: " + error.response.data.message);
     }
   };
 
@@ -138,7 +144,7 @@ function App() {
                       </span>
                     </h5>
                     <p className="card-text">
-                      商品描述：{tempProduct.category}
+                      商品描述：{tempProduct.description}
                     </p>
                     <p className="card-text">商品內容：{tempProduct.content}</p>
                     <div className="d-flex">
@@ -177,6 +183,7 @@ function App() {
                     type="email"
                     className="form-control"
                     id="username"
+                    name="username"
                     placeholder="name@example.com"
                     value={formData.username}
                     onChange={handleInputChange}
@@ -190,6 +197,7 @@ function App() {
                     type="password"
                     className="form-control"
                     id="password"
+                    name="password"
                     placeholder="Password"
                     value={formData.password}
                     onChange={handleInputChange}
